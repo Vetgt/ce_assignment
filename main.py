@@ -8,8 +8,8 @@ import pandas as pd
 # PAGE CONFIG
 # ==============================
 st.set_page_config(
-    page_title="🎯 Optimal TV Program Scheduler",
-    page_icon="📺",
+    page_title=" Optimal TV Program Scheduler",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -147,21 +147,21 @@ def display_schedule(schedule, ratings, title, co_r, mut_r):
         })
 
     df = pd.DataFrame(results)
-    st.markdown(f"### 📋 {title}")
+    st.markdown(f"###  {title}")
     st.info(f"**Crossover Rate:** `{co_r}` | **Mutation Rate:** `{mut_r}`")
     st.dataframe(df, use_container_width=True)
-    st.success(f"⭐ Total Ratings: {total_rating:.2f}")
+    st.success(f" Total Ratings: {total_rating:.2f}")
 
 
 # ==============================
 # MAIN UI
 # ==============================
-st.title("📺 Optimal TV Program Scheduler (Genetic Algorithm)")
-st.markdown("### 💡 This app uses a **Genetic Algorithm** to find the best TV schedule based on audience ratings.")
+st.title(" Optimal TV Program Scheduler (Genetic Algorithm)")
+st.markdown("###  This app uses a **Genetic Algorithm** to find the best TV schedule based on audience ratings.")
 
 with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/2923/2923256.png", width=120)
-    st.markdown("## ⚙️ Algorithm Settings")
+    st.markdown("##  Algorithm Settings")
     default_CO_R = 0.8
     default_MUT_R = 0.2
     st.write("**Default Parameters (Trial 0)**")
@@ -169,7 +169,7 @@ with st.sidebar:
     st.write(f"- Mutation Rate: `{default_MUT_R}`")
     st.divider()
 
-    st.markdown("### 🎯 Trial Parameters")
+    st.markdown("###  Trial Parameters")
     trial_params = []
     for i in range(1, 4):
         st.subheader(f"Trial {i}")
@@ -177,7 +177,7 @@ with st.sidebar:
         mut_r = st.slider(f"Mutation Rate {i}", 0.01, 0.05, 0.02, 0.01, key=f"mut_r_{i}")
         trial_params.append((co_r, mut_r))
 
-st.markdown("### 📂 Step 1: Upload your CSV file below")
+st.markdown("###  Step 1: Upload your CSV file below")
 uploaded_file = st.file_uploader("Upload your `program_ratings.csv` file", type=["csv"])
 
 if uploaded_file:
@@ -188,17 +188,17 @@ if uploaded_file:
     ratings = read_csv_to_dict(temp_path)
 
     if not ratings:
-        st.warning("⚠️ No valid data found in CSV.")
+        st.warning(" No valid data found in CSV.")
         st.stop()
 
     all_programs = list(ratings.keys())
-    st.success(f"✅ File successfully loaded. Programs detected: {len(all_programs)}")
+    st.success(f" File successfully loaded. Programs detected: {len(all_programs)}")
 
     st.markdown("---")
-    st.markdown("### 🧬 Step 2: Run Genetic Algorithm")
+    st.markdown("###  Step 2: Run Genetic Algorithm")
 
-    if st.button("🚀 Run All Trials", use_container_width=True):
-        st.header("🏁 Final Optimal Schedules")
+    if st.button(" Run All Trials", use_container_width=True):
+        st.header(" Final Optimal Schedules")
 
         best_default = genetic_algorithm(ratings, all_programs,
                                          crossover_rate=default_CO_R,
@@ -211,4 +211,4 @@ if uploaded_file:
                                            mutation_rate=mut_r)
             display_schedule(best_trial, ratings, f"Trial {i} Results", co_r, mut_r)
 else:
-    st.info("⬆️ Please upload your CSV file to begin.")
+    st.info(" Please upload your CSV file to begin.")
