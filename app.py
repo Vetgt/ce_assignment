@@ -4,8 +4,100 @@ import random
 import pandas as pd
 from pathlib import Path
 
+# =======================
+# PAGE CONFIG
+# =======================
 st.set_page_config(page_title="Program Rating Optimizer", layout="wide")
+
+# =======================
+# CUSTOM DARK THEME CSS
+# =======================
+st.markdown("""
+    <style>
+    /* Global background and text color */
+    .stApp {
+        background-color: #0e1117;
+        color: #f0f2f6;
+    }
+
+    /* Headings */
+    h1, h2, h3, h4 {
+        color: #e5e7eb;
+        font-weight: 600;
+    }
+
+    /* Sidebar styling */
+    section[data-testid="stSidebar"] {
+        background-color: #1e222b !important;
+        color: #f0f2f6;
+    }
+
+    /* Buttons */
+    .stButton>button {
+        background-color: #2b313e;
+        color: #f0f2f6;
+        border: 1px solid #3a3f4b;
+        border-radius: 8px;
+        padding: 0.6em 1.2em;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .stButton>button:hover {
+        background-color: #3f4654;
+        border-color: #6b7280;
+        color: white;
+    }
+
+    /* DataFrame */
+    .stDataFrame {
+        background-color: #1a1d23;
+        border-radius: 10px;
+        padding: 0.5em;
+    }
+
+    /* Alerts */
+    .stSuccess {
+        background-color: #1b4332 !important;
+        color: #d8f3dc !important;
+        border-radius: 6px;
+        padding: 0.6em;
+    }
+    .stInfo {
+        background-color: #1e3a8a !important;
+        color: #bfdbfe !important;
+        border-radius: 6px;
+        padding: 0.6em;
+    }
+    .stWarning {
+        background-color: #78350f !important;
+        color: #fde68a !important;
+        border-radius: 6px;
+        padding: 0.6em;
+    }
+
+    /* Sliders */
+    .stSlider label {
+        color: #f0f2f6 !important;
+        font-weight: 500;
+    }
+
+    /* Divider line */
+    hr {
+        border: 1px solid #2d323c;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# =======================
+# PAGE HEADER
+# =======================
 st.title("Program Rating Optimizer")
+st.markdown("<hr>", unsafe_allow_html=True)
+st.markdown(
+    "<p style='color:#d1d5db; font-size:16px;'>Optimize your TV program scheduling using a Genetic Algorithm. "
+    "Adjust parameters, run trials, and compare the best schedules efficiently.</p>",
+    unsafe_allow_html=True
+)
 
 # ---------------- FILE PATH ----------------
 file_path = Path("modify_program_ratings.csv")
@@ -24,6 +116,9 @@ def read_csv_to_dict(file_path):
     return program_ratings
 
 
+# =======================
+# MAIN APP BODY
+# =======================
 if file_path.exists():
     # Read ratings data
     ratings = read_csv_to_dict(file_path)
@@ -48,7 +143,6 @@ if file_path.exists():
     def initialize_pop(programs, time_slots):
         if not programs:
             return [[]]
-
         all_schedules = []
         for i in range(len(programs)):
             for schedule in initialize_pop(programs[:i] + programs[i + 1:], time_slots):
@@ -108,25 +202,26 @@ if file_path.exists():
 
         return population[0]
 
-    # ---------------- TRIAL SELECTION ----------------
-    st.sidebar.header("Choose Trial to Run")
-    trial = st.sidebar.radio("Select a trial", ["Trial 1", "Trial 2", "Trial 3"])
+    # ---------------- SIDEBAR ----------------
+    st.sidebar.header("Trial Configuration")
+    st.sidebar.markdown("Adjust GA parameters and execute multiple trials for comparison.")
 
-    # Initialize session state for results
+    trial = st.sidebar.radio("Select Trial", ["Trial 1", "Trial 2", "Trial 3"])
+
     if "trial_results" not in st.session_state:
         st.session_state.trial_results = {"Trial 1": None, "Trial 2": None, "Trial 3": None}
 
     if trial == "Trial 1":
-        co_r = st.sidebar.slider("Trial 1 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
-        mut_r = st.sidebar.slider("Trial 1 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        co_r = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
         run_trial = st.sidebar.button("Run Trial 1")
     elif trial == "Trial 2":
-        co_r = st.sidebar.slider("Trial 2 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
-        mut_r = st.sidebar.slider("Trial 2 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        co_r = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
         run_trial = st.sidebar.button("Run Trial 2")
     else:
-        co_r = st.sidebar.slider("Trial 3 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
-        mut_r = st.sidebar.slider("Trial 3 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        co_r = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
         run_trial = st.sidebar.button("Run Trial 3")
 
     # ---------------- RUN & SAVE TRIAL ----------------
@@ -151,13 +246,12 @@ if file_path.exists():
         st.session_state.trial_results[trial] = {"df": df, "rating": total_rating, "co": co_r, "mut": mut_r}
 
     # ---------------- DISPLAY RESULTS ----------------
+    st.markdown("<hr>", unsafe_allow_html=True)
     result = st.session_state.trial_results.get(trial)
     if result:
-        st.subheader(f"{trial} Results — Crossover: {result['co']:.2f} | Mutation: {result['mut']:.2f}")
+        st.subheader(f"{trial} Results")
+        st.markdown(f"<p style='color:#9ca3af;'>Crossover Rate: {result['co']:.2f} | Mutation Rate: {result['mut']:.2f}</p>", unsafe_allow_html=True)
         st.dataframe(result["df"], use_container_width=True)
         st.success(f"Total Ratings: {result['rating']:.2f}")
     else:
-        st.info(f"No result yet for {trial}. Run this trial to generate results.")
-
-else:
-    st.warning("File 'modify_program_ratings.csv' not found in directory.")
+        st.info(f"No result yet for {
