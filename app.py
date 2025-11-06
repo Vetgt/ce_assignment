@@ -254,4 +254,6 @@ if file_path.exists():
         st.dataframe(result["df"], use_container_width=True)
         st.success(f"Total Ratings: {result['rating']:.2f}")
     else:
-        st.info(f"No result yet for {
+        st.info(f"No result yet for {trial}. Run this trial to generate results.")
+else:
+    st.warning("File 'modify_program_ratings.csv' not found in directory.")
