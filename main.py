@@ -4,15 +4,62 @@ from pathlib import Path
 import random
 import pandas as pd
 
-#######################################
-# Function to read CSV
-#######################################
+# ==============================
+# PAGE CONFIG
+# ==============================
+st.set_page_config(
+    page_title="🎯 Optimal TV Program Scheduler",
+    page_icon="📺",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# ==============================
+# CSS STYLING (Custom UI)
+# ==============================
+st.markdown("""
+<style>
+    .main {
+        background: linear-gradient(to bottom right, #0f2027, #203a43, #2c5364);
+        color: white !important;
+    }
+    h1, h2, h3, h4, h5, h6, .stMarkdown {
+        color: #f0f0f0 !important;
+    }
+    .stButton button {
+        background-color: #00ADB5;
+        color: white;
+        border-radius: 10px;
+        padding: 10px 24px;
+        border: none;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    .stButton button:hover {
+        background-color: #007f85;
+        transform: scale(1.05);
+    }
+    .css-1d391kg {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 1rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    .stDataFrame {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+# ==============================
+# FUNCTIONS
+# ==============================
 def read_csv_to_dict(file_path):
     p = Path(file_path)
     if not p.exists():
         st.error(f"CSV file not found at: {p}")
         return {}
-
     program_ratings = {}
     with p.open(mode='r', newline='', encoding='utf-8') as file:
         reader = csv.reader(file)
@@ -20,7 +67,6 @@ def read_csv_to_dict(file_path):
             next(reader)  # skip header
         except StopIteration:
             return {}
-
         for row in reader:
             if not row:
                 continue
@@ -31,13 +77,9 @@ def read_csv_to_dict(file_path):
                 st.error(f"Invalid numeric value in CSV for program '{program}': {e}")
                 return {}
             program_ratings[program] = ratings
-
     return program_ratings
 
 
-#######################################
-# Genetic Algorithm Functions
-#######################################
 def fitness_function(schedule, ratings):
     total_rating = 0
     for time_slot, program in enumerate(schedule):
@@ -65,47 +107,33 @@ def mutate(schedule, all_programs):
 
 def genetic_algorithm(ratings, all_programs, generations=100, population_size=50,
                       crossover_rate=0.8, mutation_rate=0.2, elitism_size=2):
-
-    num_time_slots = 18  # From 6:00 to 23:00
-    # Initialize population (programs can repeat)
+    num_time_slots = 18
     population = []
     for _ in range(population_size):
         schedule = [random.choice(all_programs) for _ in range(num_time_slots)]
         population.append(schedule)
 
     for _ in range(generations):
-        # Evaluate fitness
         population.sort(key=lambda s: fitness_function(s, ratings), reverse=True)
-        new_population = population[:elitism_size]  # Elitism
-
+        new_population = population[:elitism_size]
         while len(new_population) < population_size:
             parent1, parent2 = random.choices(population, k=2)
-
-            # Crossover
             if random.random() < crossover_rate:
                 child1, child2 = crossover(parent1, parent2)
             else:
                 child1, child2 = parent1.copy(), parent2.copy()
-
-            # Mutation
             if random.random() < mutation_rate:
                 child1 = mutate(child1, all_programs)
             if random.random() < mutation_rate:
                 child2 = mutate(child2, all_programs)
-
             new_population.extend([child1, child2])
-
         population = new_population[:population_size]
 
     return population[0]
 
 
-#######################################
-# Display Schedule Function
-#######################################
 def display_schedule(schedule, ratings, title, co_r, mut_r):
-    all_time_slots = list(range(6, 24))  # 6:00 to 23:00
-
+    all_time_slots = list(range(6, 24))
     total_rating = 0
     results = []
     for time_slot, program in enumerate(schedule):
@@ -119,48 +147,38 @@ def display_schedule(schedule, ratings, title, co_r, mut_r):
         })
 
     df = pd.DataFrame(results)
-    st.subheader(title)
-    st.write(f"**Crossover Rate:** {co_r} | **Mutation Rate:** {mut_r}")
+    st.markdown(f"### 📋 {title}")
+    st.info(f"**Crossover Rate:** `{co_r}` | **Mutation Rate:** `{mut_r}`")
     st.dataframe(df, use_container_width=True)
-    st.success(f"Total Ratings: {total_rating:.2f}")
+    st.success(f"⭐ Total Ratings: {total_rating:.2f}")
 
 
-#######################################
-# Streamlit Interface
-#######################################
-st.title("Optimal TV Program Scheduler (Genetic Algorithm)")
-st.write("This app finds the best TV program schedule using a Genetic Algorithm.")
+# ==============================
+# MAIN UI
+# ==============================
+st.title("📺 Optimal TV Program Scheduler (Genetic Algorithm)")
+st.markdown("### 💡 This app uses a **Genetic Algorithm** to find the best TV schedule based on audience ratings.")
 
-st.markdown("### Step 1: Set Parameters for Each Trial")
-
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown("**Default Parameters (Trial 0)**")
+with st.sidebar:
+    st.image("https://cdn-icons-png.flaticon.com/512/2923/2923256.png", width=120)
+    st.markdown("## ⚙️ Algorithm Settings")
     default_CO_R = 0.8
     default_MUT_R = 0.2
-    st.write(f"Crossover Rate: **{default_CO_R}**")
-    st.write(f"Mutation Rate: **{default_MUT_R}**")
+    st.write("**Default Parameters (Trial 0)**")
+    st.write(f"- Crossover Rate: `{default_CO_R}`")
+    st.write(f"- Mutation Rate: `{default_MUT_R}`")
+    st.divider()
 
-with col2:
-    st.markdown("**Parameter Ranges**")
-    st.write("- Crossover Rate (CO_R): 0.0 – 0.95")
-    st.write("- Mutation Rate (MUT_R): 0.01 – 0.05")
+    st.markdown("### 🎯 Trial Parameters")
+    trial_params = []
+    for i in range(1, 4):
+        st.subheader(f"Trial {i}")
+        co_r = st.slider(f"Crossover Rate {i}", 0.0, 0.95, 0.8, 0.01, key=f"co_r_{i}")
+        mut_r = st.slider(f"Mutation Rate {i}", 0.01, 0.05, 0.02, 0.01, key=f"mut_r_{i}")
+        trial_params.append((co_r, mut_r))
 
-# Sliders for 3 trials
-st.markdown("---")
-st.markdown("1) Trial Parameters")
-
-trial_params = []
-for i in range(1, 4):
-    st.subheader(f"Trial {i}")
-    co_r = st.slider(f"Trial {i} - Crossover Rate", 0.0, 0.95, 0.8, 0.01, key=f"co_r_{i}")
-    mut_r = st.slider(f"Trial {i} - Mutation Rate", 0.01, 0.05, 0.02, 0.01, key=f"mut_r_{i}")
-    trial_params.append((co_r, mut_r))
-
-st.markdown("---")
-st.markdown("### Step 2: Upload CSV File")
-
-uploaded_file = st.file_uploader("Upload your program_ratings.csv file", type=["csv"])
+st.markdown("### 📂 Step 1: Upload your CSV file below")
+uploaded_file = st.file_uploader("Upload your `program_ratings.csv` file", type=["csv"])
 
 if uploaded_file:
     temp_path = Path("program_ratings.csv")
@@ -170,27 +188,27 @@ if uploaded_file:
     ratings = read_csv_to_dict(temp_path)
 
     if not ratings:
-        st.warning("No valid data found in CSV.")
+        st.warning("⚠️ No valid data found in CSV.")
         st.stop()
 
     all_programs = list(ratings.keys())
+    st.success(f"✅ File successfully loaded. Programs detected: {len(all_programs)}")
 
-    st.markdown("### Step 3: Run the Genetic Algorithm")
-    if st.button("Run All Trials"):
-        st.header("Final Optimal Schedules")
+    st.markdown("---")
+    st.markdown("### 🧬 Step 2: Run Genetic Algorithm")
 
-        # Default Run
+    if st.button("🚀 Run All Trials", use_container_width=True):
+        st.header("🏁 Final Optimal Schedules")
+
         best_default = genetic_algorithm(ratings, all_programs,
                                          crossover_rate=default_CO_R,
                                          mutation_rate=default_MUT_R)
         display_schedule(best_default, ratings, "Default Run Results", default_CO_R, default_MUT_R)
 
-        # User Trials
         for i, (co_r, mut_r) in enumerate(trial_params, start=1):
             best_trial = genetic_algorithm(ratings, all_programs,
                                            crossover_rate=co_r,
                                            mutation_rate=mut_r)
             display_schedule(best_trial, ratings, f"Trial {i} Results", co_r, mut_r)
-
 else:
-    st.info("Please set the parameters above and then upload your CSV file to continue.")
+    st.info("⬆️ Please upload your CSV file to begin.")
