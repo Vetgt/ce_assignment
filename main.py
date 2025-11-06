@@ -72,7 +72,7 @@ st.title("Program Rating Optimizer")
 st.markdown("Optimize your program scheduling using **Genetic Algorithm (GA)** with customizable parameters.")
 
 # ---------------- FILE PATH ----------------
-file_path = Path("program_ratings_modified.csv")
+file_path = Path("modify_program_ratings.csv")
 
 @st.cache_data
 def read_csv_to_dict(file_path):
