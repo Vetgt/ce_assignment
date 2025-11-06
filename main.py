@@ -1,214 +1,216 @@
 import streamlit as st
 import csv
-from pathlib import Path
 import random
 import pandas as pd
+from pathlib import Path
 
-# ==============================
-# PAGE CONFIG
-# ==============================
-st.set_page_config(
-    page_title=" Optimal TV Program Scheduler",
-    page_icon="",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# ==========================
+# PAGE CONFIG & STYLING
+# ==========================
+st.set_page_config(page_title="Program Rating Optimizer", layout="wide")
 
-# ==============================
-# CSS STYLING (Custom UI)
-# ==============================
 st.markdown("""
-<style>
-    .main {
-        background: linear-gradient(to bottom right, #0f2027, #203a43, #2c5364);
-        color: white !important;
+    <style>
+    /* Background & font */
+    body {
+        background-color: #f9fafc;
+        font-family: 'Poppins', sans-serif;
     }
-    h1, h2, h3, h4, h5, h6, .stMarkdown {
-        color: #f0f0f0 !important;
+
+    /* Title */
+    .title {
+        text-align: center;
+        color: #2E86C1;
+        font-size: 2.2em;
+        font-weight: 700;
+        margin-bottom: 10px;
     }
-    .stButton button {
-        background-color: #00ADB5;
-        color: white;
+
+    /* Subtitle */
+    .subtitle {
+        text-align: center;
+        color: #5D6D7E;
+        font-size: 1.1em;
+        margin-bottom: 30px;
+    }
+
+    /* Card style */
+    .stDataFrame, .stAlert, .stSuccess, .stInfo {
+        border-radius: 12px;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+    }
+
+    /* Sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #f0f2f6;
+    }
+
+    /* Buttons */
+    .stButton>button {
         border-radius: 10px;
-        padding: 10px 24px;
-        border: none;
-        font-weight: bold;
-        transition: 0.3s;
+        background-color: #2E86C1;
+        color: white;
+        font-weight: 600;
     }
-    .stButton button:hover {
-        background-color: #007f85;
-        transform: scale(1.05);
+    .stButton>button:hover {
+        background-color: #1B4F72;
+        color: white;
     }
-    .css-1d391kg {
-        background: rgba(255, 255, 255, 0.05);
-        border-radius: 15px;
-        padding: 1rem;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-    }
-    .stDataFrame {
-        border-radius: 15px;
-        overflow: hidden;
-    }
-</style>
+    </style>
 """, unsafe_allow_html=True)
 
-# ==============================
-# FUNCTIONS
-# ==============================
+st.markdown('<div class="title">📺 Program Rating Optimizer</div>', unsafe_allow_html=True)
+st.markdown('<div class="subtitle">Genetic Algorithm-based Scheduling System</div>', unsafe_allow_html=True)
+
+# ---------------- FILE PATH ----------------
+file_path = Path("modify_program_ratings.csv")
+
+@st.cache_data
 def read_csv_to_dict(file_path):
-    p = Path(file_path)
-    if not p.exists():
-        st.error(f"CSV file not found at: {p}")
-        return {}
+    """Reads CSV and converts it into a dictionary of program: ratings list."""
     program_ratings = {}
-    with p.open(mode='r', newline='', encoding='utf-8') as file:
-        reader = csv.reader(file)
-        try:
-            next(reader)  # skip header
-        except StopIteration:
-            return {}
+    with open(file_path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader)  # Skip header
         for row in reader:
-            if not row:
-                continue
-            program = row[0].strip()
-            try:
-                ratings = [float(x) for x in row[1:] if x != ""]
-            except ValueError as e:
-                st.error(f"Invalid numeric value in CSV for program '{program}': {e}")
-                return {}
+            program = row[0]
+            ratings = [float(x) for x in row[1:]]
             program_ratings[program] = ratings
     return program_ratings
 
 
-def fitness_function(schedule, ratings):
-    total_rating = 0
-    for time_slot, program in enumerate(schedule):
-        total_rating += ratings[program][time_slot]
-    return total_rating
+if file_path.exists():
+    ratings = read_csv_to_dict(file_path)
 
-
-def crossover(schedule1, schedule2):
-    if len(schedule1) < 3:
-        return schedule1.copy(), schedule2.copy()
-    crossover_point = random.randint(1, len(schedule1) - 2)
-    child1 = schedule1[:crossover_point] + schedule2[crossover_point:]
-    child2 = schedule2[:crossover_point] + schedule1[crossover_point:]
-    return child1, child2
-
-
-def mutate(schedule, all_programs):
-    if not schedule:
-        return schedule
-    mutation_point = random.randint(0, len(schedule) - 1)
-    new_program = random.choice(all_programs)
-    schedule[mutation_point] = new_program
-    return schedule
-
-
-def genetic_algorithm(ratings, all_programs, generations=100, population_size=50,
-                      crossover_rate=0.8, mutation_rate=0.2, elitism_size=2):
-    num_time_slots = 18
-    population = []
-    for _ in range(population_size):
-        schedule = [random.choice(all_programs) for _ in range(num_time_slots)]
-        population.append(schedule)
-
-    for _ in range(generations):
-        population.sort(key=lambda s: fitness_function(s, ratings), reverse=True)
-        new_population = population[:elitism_size]
-        while len(new_population) < population_size:
-            parent1, parent2 = random.choices(population, k=2)
-            if random.random() < crossover_rate:
-                child1, child2 = crossover(parent1, parent2)
-            else:
-                child1, child2 = parent1.copy(), parent2.copy()
-            if random.random() < mutation_rate:
-                child1 = mutate(child1, all_programs)
-            if random.random() < mutation_rate:
-                child2 = mutate(child2, all_programs)
-            new_population.extend([child1, child2])
-        population = new_population[:population_size]
-
-    return population[0]
-
-
-def display_schedule(schedule, ratings, title, co_r, mut_r):
-    all_time_slots = list(range(6, 24))
-    total_rating = 0
-    results = []
-    for time_slot, program in enumerate(schedule):
-        hour = all_time_slots[time_slot]
-        rating = ratings[program][time_slot]
-        total_rating += rating
-        results.append({
-            "Time Slot": f"{hour:02d}:00",
-            "Program": program,
-            "Rating": rating
-        })
-
-    df = pd.DataFrame(results)
-    st.markdown(f"###  {title}")
-    st.info(f"**Crossover Rate:** `{co_r}` | **Mutation Rate:** `{mut_r}`")
-    st.dataframe(df, use_container_width=True)
-    st.success(f" Total Ratings: {total_rating:.2f}")
-
-
-# ==============================
-# MAIN UI
-# ==============================
-st.title(" Optimal TV Program Scheduler (Genetic Algorithm)")
-st.markdown("###  This app uses a **Genetic Algorithm** to find the best TV schedule based on audience ratings.")
-
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/2923/2923256.png", width=120)
-    st.markdown("##  Algorithm Settings")
-    default_CO_R = 0.8
-    default_MUT_R = 0.2
-    st.write("**Default Parameters (Trial 0)**")
-    st.write(f"- Crossover Rate: `{default_CO_R}`")
-    st.write(f"- Mutation Rate: `{default_MUT_R}`")
-    st.divider()
-
-    st.markdown("###  Trial Parameters")
-    trial_params = []
-    for i in range(1, 4):
-        st.subheader(f"Trial {i}")
-        co_r = st.slider(f"Crossover Rate {i}", 0.0, 0.95, 0.8, 0.01, key=f"co_r_{i}")
-        mut_r = st.slider(f"Mutation Rate {i}", 0.01, 0.05, 0.02, 0.01, key=f"mut_r_{i}")
-        trial_params.append((co_r, mut_r))
-
-st.markdown("###  Step 1: Upload your CSV file below")
-uploaded_file = st.file_uploader("Upload your `program_ratings.csv` file", type=["csv"])
-
-if uploaded_file:
-    temp_path = Path("program_ratings.csv")
-    with open(temp_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-
-    ratings = read_csv_to_dict(temp_path)
-
-    if not ratings:
-        st.warning(" No valid data found in CSV.")
-        st.stop()
+    # Parameters
+    GEN = 100
+    POP = 50
+    EL_S = 2
 
     all_programs = list(ratings.keys())
-    st.success(f" File successfully loaded. Programs detected: {len(all_programs)}")
+    all_time_slots = list(range(6, 24))
 
-    st.markdown("---")
-    st.markdown("###  Step 2: Run Genetic Algorithm")
+    # ---------------- FITNESS FUNCTION ----------------
+    def fitness_function(schedule):
+        total_rating = 0
+        for time_slot, program in enumerate(schedule):
+            if program in ratings and time_slot < len(ratings[program]):
+                total_rating += ratings[program][time_slot]
+        return total_rating
 
-    if st.button(" Run All Trials", use_container_width=True):
-        st.header(" Final Optimal Schedules")
+    def initialize_pop(programs, time_slots):
+        if not programs:
+            return [[]]
+        all_schedules = []
+        for i in range(len(programs)):
+            for schedule in initialize_pop(programs[:i] + programs[i + 1:], time_slots):
+                all_schedules.append([programs[i]] + schedule)
+        return all_schedules
 
-        best_default = genetic_algorithm(ratings, all_programs,
-                                         crossover_rate=default_CO_R,
-                                         mutation_rate=default_MUT_R)
-        display_schedule(best_default, ratings, "Default Run Results", default_CO_R, default_MUT_R)
+    def finding_best_schedule(all_schedules):
+        best_schedule = []
+        max_ratings = 0
+        for schedule in all_schedules:
+            total_ratings = fitness_function(schedule)
+            if total_ratings > max_ratings:
+                max_ratings = total_ratings
+                best_schedule = schedule
+        return best_schedule
 
-        for i, (co_r, mut_r) in enumerate(trial_params, start=1):
-            best_trial = genetic_algorithm(ratings, all_programs,
-                                           crossover_rate=co_r,
-                                           mutation_rate=mut_r)
-            display_schedule(best_trial, ratings, f"Trial {i} Results", co_r, mut_r)
+    def crossover(schedule1, schedule2):
+        crossover_point = random.randint(1, len(schedule1) - 2)
+        child1 = schedule1[:crossover_point] + schedule2[crossover_point:]
+        child2 = schedule2[:crossover_point] + schedule1[crossover_point:]
+        return child1, child2
+
+    def mutate(schedule):
+        mutation_point = random.randint(0, len(schedule) - 1)
+        new_program = random.choice(all_programs)
+        schedule[mutation_point] = new_program
+        return schedule
+
+    def genetic_algorithm(initial_schedule, generations=GEN, population_size=POP, crossover_rate=0.8, mutation_rate=0.02, elitism_size=EL_S):
+        population = [initial_schedule]
+        for _ in range(population_size - 1):
+            random_schedule = initial_schedule.copy()
+            random.shuffle(random_schedule)
+            population.append(random_schedule)
+
+        for generation in range(generations):
+            population.sort(key=lambda schedule: fitness_function(schedule), reverse=True)
+            new_population = population[:elitism_size]
+
+            while len(new_population) < population_size:
+                parent1, parent2 = random.choices(population, k=2)
+                if random.random() < crossover_rate:
+                    child1, child2 = crossover(parent1, parent2)
+                else:
+                    child1, child2 = parent1.copy(), parent2.copy()
+
+                if random.random() < mutation_rate:
+                    child1 = mutate(child1)
+                if random.random() < mutation_rate:
+                    child2 = mutate(child2)
+
+                new_population.extend([child1, child2])
+
+            population = new_population
+
+        return population[0]
+
+    # ---------------- TRIAL SELECTION ----------------
+    st.sidebar.header("⚙️ Genetic Algorithm Settings")
+    trial = st.sidebar.radio("Select a trial", ["Trial 1", "Trial 2", "Trial 3"])
+
+    if "trial_results" not in st.session_state:
+        st.session_state.trial_results = {"Trial 1": None, "Trial 2": None, "Trial 3": None}
+
+    st.sidebar.markdown("---")
+
+    if trial == "Trial 1":
+        co_r = st.sidebar.slider("Trial 1 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Trial 1 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        run_trial = st.sidebar.button("🚀 Run Trial 1")
+    elif trial == "Trial 2":
+        co_r = st.sidebar.slider("Trial 2 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Trial 2 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        run_trial = st.sidebar.button("🚀 Run Trial 2")
+    else:
+        co_r = st.sidebar.slider("Trial 3 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Trial 3 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        run_trial = st.sidebar.button("🚀 Run Trial 3")
+
+    # ---------------- RUN & SAVE TRIAL ----------------
+    if run_trial:
+        with st.spinner("🧠 Running Genetic Algorithm... Please wait"):
+            all_possible_schedules = initialize_pop(all_programs, all_time_slots)
+            initial_best_schedule = finding_best_schedule(all_possible_schedules)
+            rem_t_slots = len(all_time_slots) - len(initial_best_schedule)
+
+            genetic_schedule = genetic_algorithm(
+                initial_best_schedule, generations=GEN, population_size=POP,
+                crossover_rate=co_r, mutation_rate=mut_r, elitism_size=EL_S
+            )
+
+            final_schedule = initial_best_schedule + genetic_schedule[:rem_t_slots]
+            df = pd.DataFrame({
+                "Time Slot": [f"{t:02d}:00" for t in all_time_slots[:len(final_schedule)]],
+                "Program": final_schedule
+            })
+            total_rating = fitness_function(final_schedule)
+
+            st.session_state.trial_results[trial] = {"df": df, "rating": total_rating, "co": co_r, "mut": mut_r}
+
+        st.success("✅ Trial completed successfully!")
+
+    # ---------------- DISPLAY RESULTS ----------------
+    result = st.session_state.trial_results.get(trial)
+    if result:
+        st.markdown(f"### 🧾 {trial} Results")
+        st.caption(f"Crossover: `{result['co']:.2f}` | Mutation: `{result['mut']:.2f}`")
+        st.dataframe(result["df"], use_container_width=True)
+        st.success(f"⭐ Total Ratings Achieved: **{result['rating']:.2f}**")
+    else:
+        st.info(f"No result yet for {trial}. Run this trial to generate results.")
 else:
-    st.info(" Please upload your CSV file to begin.")
+    st.warning("⚠️ File `modify_program_ratings.csv` not found in directory.")
