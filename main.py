@@ -4,72 +4,8 @@ import random
 import pandas as pd
 from pathlib import Path
 
-# ==============================
-# PAGE CONFIG & STYLE
-# ==============================
 st.set_page_config(page_title="Program Rating Optimizer", layout="wide")
-
-# Custom dark mode CSS
-st.markdown("""
-    <style>
-    body {
-        background-color: #0e1117;
-        color: #f0f2f6;
-    }
-    .stApp {
-        background-color: #0e1117;
-    }
-    h1, h2, h3, h4, h5 {
-        color: #f0f2f6;
-        font-weight: 600;
-    }
-    .block-container {
-        padding: 2rem 4rem;
-    }
-    .sidebar .sidebar-content {
-        background-color: #1e222b;
-    }
-    .stButton>button {
-        background-color: #2b313e;
-        color: #f0f2f6;
-        border: 1px solid #3a3f4b;
-        border-radius: 6px;
-        padding: 0.6em 1.2em;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        background-color: #4b5563;
-        border-color: #6b7280;
-        color: white;
-    }
-    .stDataFrame {
-        border-radius: 10px;
-        background-color: #1a1d23;
-    }
-    .stSuccess {
-        background-color: #1b4332 !important;
-        color: #d8f3dc !important;
-    }
-    .stInfo {
-        background-color: #1e3a8a !important;
-        color: #bfdbfe !important;
-    }
-    .stWarning {
-        background-color: #78350f !important;
-        color: #fde68a !important;
-    }
-    .stSlider label {
-        color: #f0f2f6 !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# ==============================
-# MAIN TITLE
-# ==============================
 st.title("Program Rating Optimizer")
-st.markdown("Optimize your program scheduling using **Genetic Algorithm (GA)** with customizable parameters.")
 
 # ---------------- FILE PATH ----------------
 file_path = Path("modify_program_ratings.csv")
@@ -87,16 +23,20 @@ def read_csv_to_dict(file_path):
             program_ratings[program] = ratings
     return program_ratings
 
+
 if file_path.exists():
+    # Read ratings data
     ratings = read_csv_to_dict(file_path)
 
+    # Parameters
     GEN = 100
     POP = 50
     EL_S = 2
 
-    all_programs = list(ratings.keys())
-    all_time_slots = list(range(6, 24))
+    all_programs = list(ratings.keys())  # all programs
+    all_time_slots = list(range(6, 24))  # 6:00 to 23:00
 
+    # ---------------- FITNESS FUNCTION ----------------
     def fitness_function(schedule):
         total_rating = 0
         for time_slot, program in enumerate(schedule):
@@ -104,9 +44,11 @@ if file_path.exists():
                 total_rating += ratings[program][time_slot]
         return total_rating
 
+    # ---------------- INITIALIZATION ----------------
     def initialize_pop(programs, time_slots):
         if not programs:
             return [[]]
+
         all_schedules = []
         for i in range(len(programs)):
             for schedule in initialize_pop(programs[:i] + programs[i + 1:], time_slots):
@@ -123,6 +65,7 @@ if file_path.exists():
                 best_schedule = schedule
         return best_schedule
 
+    # ---------------- GA OPERATORS ----------------
     def crossover(schedule1, schedule2):
         crossover_point = random.randint(1, len(schedule1) - 2)
         child1 = schedule1[:crossover_point] + schedule2[crossover_point:]
@@ -165,26 +108,25 @@ if file_path.exists():
 
         return population[0]
 
-    # ---------------- SIDEBAR ----------------
-    st.sidebar.header("Trial Configuration")
-    st.sidebar.markdown("Adjust parameters and run trials to compare optimization performance.")
+    # ---------------- TRIAL SELECTION ----------------
+    st.sidebar.header("Choose Trial to Run")
+    trial = st.sidebar.radio("Select a trial", ["Trial 1", "Trial 2", "Trial 3"])
 
-    trial = st.sidebar.radio("Select Trial", ["Trial 1", "Trial 2", "Trial 3"])
-
+    # Initialize session state for results
     if "trial_results" not in st.session_state:
         st.session_state.trial_results = {"Trial 1": None, "Trial 2": None, "Trial 3": None}
 
     if trial == "Trial 1":
-        co_r = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
-        mut_r = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        co_r = st.sidebar.slider("Trial 1 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Trial 1 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
         run_trial = st.sidebar.button("Run Trial 1")
     elif trial == "Trial 2":
-        co_r = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
-        mut_r = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        co_r = st.sidebar.slider("Trial 2 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Trial 2 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
         run_trial = st.sidebar.button("Run Trial 2")
     else:
-        co_r = st.sidebar.slider("Crossover Rate", 0.0, 0.95, 0.8, 0.01)
-        mut_r = st.sidebar.slider("Mutation Rate", 0.01, 0.05, 0.02, 0.01)
+        co_r = st.sidebar.slider("Trial 3 - Crossover Rate", 0.0, 0.95, 0.8, 0.01)
+        mut_r = st.sidebar.slider("Trial 3 - Mutation Rate", 0.01, 0.05, 0.02, 0.01)
         run_trial = st.sidebar.button("Run Trial 3")
 
     # ---------------- RUN & SAVE TRIAL ----------------
@@ -205,17 +147,17 @@ if file_path.exists():
         })
         total_rating = fitness_function(final_schedule)
 
+        # Save to session state
         st.session_state.trial_results[trial] = {"df": df, "rating": total_rating, "co": co_r, "mut": mut_r}
 
     # ---------------- DISPLAY RESULTS ----------------
     result = st.session_state.trial_results.get(trial)
-    st.markdown("---")
     if result:
-        st.subheader(f"{trial} Results")
-        st.markdown(f"**Crossover Rate:** {result['co']:.2f} | **Mutation Rate:** {result['mut']:.2f}")
+        st.subheader(f"{trial} Results — Crossover: {result['co']:.2f} | Mutation: {result['mut']:.2f}")
         st.dataframe(result["df"], use_container_width=True)
-        st.success(f"Total Ratings Achieved: {result['rating']:.2f}")
+        st.success(f"Total Ratings: {result['rating']:.2f}")
     else:
         st.info(f"No result yet for {trial}. Run this trial to generate results.")
+
 else:
     st.warning("File 'modify_program_ratings.csv' not found in directory.")
